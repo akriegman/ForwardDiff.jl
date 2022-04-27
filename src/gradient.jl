@@ -9,7 +9,7 @@ Return `∇f` evaluated at `x`, assuming `f` is called as `f(x)`.
 The array `∇f` has the same shape as `x`, and its elements are
 `∇f[j, k, ...] = ∂f/∂x[j, k, ...]`.
 
-This method assumes that `isa(f(x), Real)`.
+This method assumes that `isa(f(x), Number)`.
 
 Set `check` to `Val{false}()` to disable tag checking. This can lead to perturbation confusion, so should be used with care.
 """
@@ -28,7 +28,7 @@ end
 Compute `∇f` evaluated at `x` and store the result(s) in `result`, assuming `f` is called as
 `f(x)`.
 
-This method assumes that `isa(f(x), Real)`.
+This method assumes that `isa(f(x), Number)`.
 
 """
 function gradient!(result::Union{AbstractArray,DiffResult}, f::F, x::AbstractArray, cfg::GradientConfig{T} = GradientConfig(f, x), ::Val{CHK}=Val{true}()) where {T, CHK, F}
@@ -49,13 +49,13 @@ end
 @inline gradient!(result::Union{AbstractArray,DiffResult}, f, x::StaticArray, cfg::GradientConfig) = gradient!(result, f, x)
 @inline gradient!(result::Union{AbstractArray,DiffResult}, f, x::StaticArray, cfg::GradientConfig, ::Val) = gradient!(result, f, x)
 
-gradient(f, x::Real) = throw(DimensionMismatch("gradient(f, x) expects that x is an array. Perhaps you meant derivative(f, x)?"))
+gradient(f, x::Number) = throw(DimensionMismatch("gradient(f, x) expects that x is an array. Perhaps you meant derivative(f, x)?"))
 
 #####################
 # result extraction #
 #####################
 
-@generated function extract_gradient(::Type{T}, y::Real, x::S) where {T,S<:StaticArray}
+@generated function extract_gradient(::Type{T}, y::Number, x::S) where {T,S<:StaticArray}
     result = Expr(:tuple, [:(partials(T, y, $i)) for i in 1:length(x)]...)
     return quote
         $(Expr(:meta, :inline))
@@ -64,7 +64,7 @@ gradient(f, x::Real) = throw(DimensionMismatch("gradient(f, x) expects that x is
     end
 end
 
-function extract_gradient!(::Type{T}, result::DiffResult, y::Real) where {T}
+function extract_gradient!(::Type{T}, result::DiffResult, y::Number) where {T}
     result = DiffResults.value!(result, y)
     grad = DiffResults.gradient(result)
     fill!(grad, zero(y))
@@ -77,7 +77,7 @@ function extract_gradient!(::Type{T}, result::DiffResult, dual::Dual) where {T}
     return result
 end
 
-extract_gradient!(::Type{T}, result::AbstractArray, y::Real) where {T} = fill!(result, zero(y))
+extract_gradient!(::Type{T}, result::AbstractArray, y::Number) where {T} = fill!(result, zero(y))
 extract_gradient!(::Type{T}, result::AbstractArray, dual::Dual) where {T}= copyto!(result, partials(T, dual))
 
 function extract_gradient_chunk!(::Type{T}, result, dual, index, chunksize) where {T}
@@ -104,7 +104,7 @@ const GRAD_ERROR = DimensionMismatch("gradient(f, x) expects that f(x) is a real
 
 function vector_mode_gradient(f::F, x, cfg::GradientConfig{T}) where {T, F}
     ydual = vector_mode_dual_eval!(f, cfg, x)
-    ydual isa Real || throw(GRAD_ERROR)
+    ydual isa Number || throw(GRAD_ERROR)
     result = similar(x, valtype(ydual))
     return extract_gradient!(T, result, ydual)
 end

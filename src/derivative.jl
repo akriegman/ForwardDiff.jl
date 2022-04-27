@@ -3,26 +3,26 @@
 ###############
 
 """
-    ForwardDiff.derivative(f, x::Real)
+    ForwardDiff.derivative(f, x::Number)
 
 Return `df/dx` evaluated at `x`, assuming `f` is called as `f(x)`.
 
-This method assumes that `isa(f(x), Union{Real,AbstractArray})`.
+This method assumes that `isa(f(x), Union{Number,AbstractArray})`.
 """
-@inline function derivative(f::F, x::R) where {F,R<:Real}
+@inline function derivative(f::F, x::R) where {F,R<:Number}
     T = typeof(Tag(f, R))
     return extract_derivative(T, f(Dual{T}(x, one(x))))
 end
 
 """
-    ForwardDiff.derivative(f!, y::AbstractArray, x::Real, cfg::DerivativeConfig = DerivativeConfig(f!, y, x), check=Val{true}())
+    ForwardDiff.derivative(f!, y::AbstractArray, x::Number, cfg::DerivativeConfig = DerivativeConfig(f!, y, x), check=Val{true}())
 
 Return `df!/dx` evaluated at `x`, assuming `f!` is called as `f!(y, x)` where the result is
 stored in `y`.
 
 Set `check` to `Val{false}()` to disable tag checking. This can lead to perturbation confusion, so should be used with care.
 """
-@inline function derivative(f!, y::AbstractArray, x::Real,
+@inline function derivative(f!, y::AbstractArray, x::Number,
                             cfg::DerivativeConfig{T} = DerivativeConfig(f!, y, x), ::Val{CHK}=Val{true}()) where {T, CHK}
     CHK && checktag(T, f!, x)
     ydual = cfg.duals
@@ -33,15 +33,15 @@ Set `check` to `Val{false}()` to disable tag checking. This can lead to perturba
 end
 
 """
-    ForwardDiff.derivative!(result::Union{AbstractArray,DiffResult}, f, x::Real)
+    ForwardDiff.derivative!(result::Union{AbstractArray,DiffResult}, f, x::Number)
 
 Compute `df/dx` evaluated at `x` and store the result(s) in `result`, assuming `f` is called
 as `f(x)`.
 
-This method assumes that `isa(f(x), Union{Real,AbstractArray})`.
+This method assumes that `isa(f(x), Union{Number,AbstractArray})`.
 """
 @inline function derivative!(result::Union{AbstractArray,DiffResult},
-                             f::F, x::R) where {F,R<:Real}
+                             f::F, x::R) where {F,R<:Number}
     T = typeof(Tag(f, R))
     ydual = f(Dual{T}(x, one(x)))
     result = extract_value!(T, result, ydual)
@@ -50,7 +50,7 @@ This method assumes that `isa(f(x), Union{Real,AbstractArray})`.
 end
 
 """
-    ForwardDiff.derivative!(result::Union{AbstractArray,DiffResult}, f!, y::AbstractArray, x::Real, cfg::DerivativeConfig = DerivativeConfig(f!, y, x), check=Val{true}())
+    ForwardDiff.derivative!(result::Union{AbstractArray,DiffResult}, f!, y::AbstractArray, x::Number, cfg::DerivativeConfig = DerivativeConfig(f!, y, x), check=Val{true}())
 
 Compute `df!/dx` evaluated at `x` and store the result(s) in `result`, assuming `f!` is
 called as `f!(y, x)` where the result is stored in `y`.
@@ -58,7 +58,7 @@ called as `f!(y, x)` where the result is stored in `y`.
 Set `check` to `Val{false}()` to disable tag checking. This can lead to perturbation confusion, so should be used with care.
 """
 @inline function derivative!(result::Union{AbstractArray,DiffResult},
-                             f!, y::AbstractArray, x::Real,
+                             f!, y::AbstractArray, x::Number,
                              cfg::DerivativeConfig{T} = DerivativeConfig(f!, y, x), ::Val{CHK}=Val{true}()) where {T, CHK}
     CHK && checktag(T, f!, x)
     ydual = cfg.duals
@@ -79,7 +79,7 @@ derivative(f, x::AbstractArray) = throw(DimensionMismatch("derivative(f, x) expe
 #--------------#
 
 @inline extract_derivative(::Type{T}, y::Dual) where {T}          = partials(T, y, 1)
-@inline extract_derivative(::Type{T}, y::Real) where {T}          = zero(y)
+@inline extract_derivative(::Type{T}, y::Number) where {T}          = zero(y)
 @inline extract_derivative(::Type{T}, y::AbstractArray) where {T} = map(d -> extract_derivative(T,d), y)
 
 # mutating #

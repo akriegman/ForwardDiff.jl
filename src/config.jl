@@ -82,7 +82,7 @@ This constructor does not store/modify `y` or `x`.
 function DerivativeConfig(f::F,
                           y::AbstractArray{Y},
                           x::X,
-                          tag::T = Tag(f, X)) where {F,X<:Real,Y<:Real,T}
+                          tag::T = Tag(f, X)) where {F,X<:Number,Y<:Number,T}
     duals = similar(y, Dual{T,Y,1})
     return DerivativeConfig{T,typeof(duals)}(duals)
 end

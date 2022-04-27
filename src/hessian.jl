@@ -7,7 +7,7 @@
 
 Return `H(f)` (i.e. `J(∇(f))`) evaluated at `x`, assuming `f` is called as `f(x)`.
 
-This method assumes that `isa(f(x), Real)`.
+This method assumes that `isa(f(x), Number)`.
 
 Set `check` to `Val{false}()` to disable tag checking. This can lead to perturbation confusion, so should be used with care.
 """
@@ -23,7 +23,7 @@ end
 Compute `H(f)` (i.e. `J(∇(f))`) evaluated at `x` and store the result(s) in `result`,
 assuming `f` is called as `f(x)`.
 
-This method assumes that `isa(f(x), Real)`.
+This method assumes that `isa(f(x), Number)`.
 
 Set `check` to `Val{false}()` to disable tag checking. This can lead to perturbation confusion, so should be used with care.
 """

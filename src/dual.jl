@@ -6,17 +6,17 @@
     ForwardDiff.can_dual(V::Type)
 
 Determines whether the type V is allowed as the scalar type in a
-Dual. By default, only `<:Real` types are allowed.
+Dual. By default, only `<:Number` types are allowed.
 """
 can_dual(::Type{<:Number}) = true
 can_dual(::Type) = false
 
-struct Dual{T,V,N} <: Real
+struct Dual{T,V,N} <: Number
     value::V
     partials::Partials{N,V}
-    function Dual{T, V, N}(value::V, partials::Partials{N, V}) where {T, V, N}
+    function Dual{T,V,N}(value::V, partials::Partials{N,V}) where {T,V,N}
         can_dual(V) || throw_cannot_dual(V)
-        new{T, V, N}(value, partials)
+        new{T,V,N}(value, partials)
     end
 end
 
@@ -39,7 +39,7 @@ Base.showerror(io::IO, e::DualMismatchError{A,B}) where {A,B} =
 
 @noinline function throw_cannot_dual(V::Type)
     throw(ArgumentError("Cannot create a dual over scalar type $V." *
-        " If the type behaves as a scalar, define ForwardDiff.can_dual(::Type{$V}) = true."))
+                        " If the type behaves as a scalar, define ForwardDiff.can_dual(::Type{$V}) = true."))
 end
 
 """
@@ -51,7 +51,7 @@ objects will appear outside `Dual{a}` objects.
 This is important when working with nested differentiation: currently, only the outermost
 tag can be extracted, so it should be used in the _innermost_ function.
 """
-≺(a,b) = throw(DualMismatchError(a,b))
+≺(a, b) = throw(DualMismatchError(a, b))
 
 ################
 # Constructors #
@@ -85,13 +85,13 @@ end
 @inline value(x) = x
 @inline value(d::Dual) = d.value
 
-@inline value(::Type{T}, x) where T = x
-@inline value(::Type{T}, d::Dual{T}) where T = value(d)
+@inline value(::Type{T}, x) where {T} = x
+@inline value(::Type{T}, d::Dual{T}) where {T} = value(d)
 @inline function value(::Type{T}, d::Dual{S}) where {T,S}
     if S ≺ T
         d
     else
-        throw(DualMismatchError(T,S))
+        throw(DualMismatchError(T, S))
     end
 end
 
@@ -102,13 +102,13 @@ end
 @inline Base.@propagate_inbounds partials(d::Dual, i, j) = partials(d, i).partials[j]
 @inline Base.@propagate_inbounds partials(d::Dual, i, j, k...) = partials(partials(d, i, j), k...)
 
-@inline Base.@propagate_inbounds partials(::Type{T}, x, i...) where T = partials(x, i...)
-@inline Base.@propagate_inbounds partials(::Type{T}, d::Dual{T}, i...) where T = partials(d, i...)
+@inline Base.@propagate_inbounds partials(::Type{T}, x, i...) where {T} = partials(x, i...)
+@inline Base.@propagate_inbounds partials(::Type{T}, d::Dual{T}, i...) where {T} = partials(d, i...)
 @inline function partials(::Type{T}, d::Dual{S}, i...) where {T,S}
     if S ≺ T
         zero(d)
     else
-        throw(DualMismatchError(T,S))
+        throw(DualMismatchError(T, S))
     end
 end
 
@@ -155,7 +155,7 @@ macro define_ternary_dual_op(f, xyz_body, xy_body, xz_body, yz_body, x_body, y_b
         @inline $(f)(x::$FD.Dual{Txyz}, y::$FD.Dual{Txyz}, z::$FD.Dual{Txyz}) where {Txyz} = $xyz_body
         @inline $(f)(x::$FD.Dual{Txy}, y::$FD.Dual{Txy}, z::$FD.Dual{Tz}) where {Txy,Tz} = Tz ≺ Txy ? $xy_body : $z_body
         @inline $(f)(x::$FD.Dual{Txz}, y::$FD.Dual{Ty}, z::$FD.Dual{Txz}) where {Txz,Ty} = Ty ≺ Txz ? $xz_body : $y_body
-        @inline $(f)(x::$FD.Dual{Tx}, y::$FD.Dual{Tyz}, z::$FD.Dual{Tyz}) where {Tx,Tyz} = Tyz ≺ Tx ? $x_body  : $yz_body
+        @inline $(f)(x::$FD.Dual{Tx}, y::$FD.Dual{Tyz}, z::$FD.Dual{Tyz}) where {Tx,Tyz} = Tyz ≺ Tx ? $x_body : $yz_body
         @inline function $(f)(x::$FD.Dual{Tx}, y::$FD.Dual{Ty}, z::$FD.Dual{Tz}) where {Tx,Ty,Tz}
             if Tz ≺ Tx && Ty ≺ Tx
                 $x_body
@@ -169,7 +169,7 @@ macro define_ternary_dual_op(f, xyz_body, xy_body, xz_body, yz_body, x_body, y_b
     for R in AMBIGUOUS_TYPES
         expr = quote
             @inline $(f)(x::$FD.Dual{Txy}, y::$FD.Dual{Txy}, z::$R) where {Txy} = $xy_body
-            @inline $(f)(x::$FD.Dual{Tx}, y::$FD.Dual{Ty}, z::$R)  where {Tx, Ty} = Ty ≺ Tx ? $x_body : $y_body
+            @inline $(f)(x::$FD.Dual{Tx}, y::$FD.Dual{Ty}, z::$R) where {Tx,Ty} = Ty ≺ Tx ? $x_body : $y_body
             @inline $(f)(x::$FD.Dual{Txz}, y::$R, z::$FD.Dual{Txz}) where {Txz} = $xz_body
             @inline $(f)(x::$FD.Dual{Tx}, y::$R, z::$FD.Dual{Tz}) where {Tx,Tz} = Tz ≺ Tx ? $x_body : $z_body
             @inline $(f)(x::$R, y::$FD.Dual{Tyz}, z::$FD.Dual{Tyz}) where {Tyz} = $yz_body
@@ -196,36 +196,36 @@ macro define_ternary_dual_op(f, xyz_body, xy_body, xz_body, yz_body, x_body, y_b
 end
 
 # Support complex-valued functions such as `hankelh1`
-function dual_definition_retval(::Val{T}, val::Real, deriv::Real, partial::Partials) where {T}
+function dual_definition_retval(::Val{T}, val::Number, deriv::Number, partial::Partials) where {T}
     return Dual{T}(val, deriv * partial)
 end
-function dual_definition_retval(::Val{T}, val::Real, deriv1::Real, partial1::Partials, deriv2::Real, partial2::Partials) where {T}
+function dual_definition_retval(::Val{T}, val::Number, deriv1::Number, partial1::Partials, deriv2::Number, partial2::Partials) where {T}
     return Dual{T}(val, _mul_partials(partial1, partial2, deriv1, deriv2))
 end
-function dual_definition_retval(::Val{T}, val::Complex, deriv::Union{Real,Complex}, partial::Partials) where {T}
-    reval, imval = reim(val)
-    if deriv isa Real
-        p = deriv * partial
-        return Complex(Dual{T}(reval, p), Dual{T}(imval, zero(p)))
-    else
-        rederiv, imderiv = reim(deriv)
-        return Complex(Dual{T}(reval, rederiv * partial), Dual{T}(imval, imderiv * partial))
-    end
-end
-function dual_definition_retval(::Val{T}, val::Complex, deriv1::Union{Real,Complex}, partial1::Partials, deriv2::Union{Real,Complex}, partial2::Partials) where {T}
-    reval, imval = reim(val)
-    if deriv1 isa Real && deriv2 isa Real
-        p = _mul_partials(partial1, partial2, deriv1, deriv2)
-        return Complex(Dual{T}(reval, p), Dual{T}(imval, zero(p)))
-    else
-        rederiv1, imderiv1 = reim(deriv1)
-        rederiv2, imderiv2 = reim(deriv2)
-        return Complex(
-            Dual{T}(reval, _mul_partials(partial1, partial2, rederiv1, rederiv2)),
-            Dual{T}(imval, _mul_partials(partial1, partial2, imderiv1, imderiv2)),
-        )
-    end
-end
+# function dual_definition_retval(::Val{T}, val::Complex, deriv::Union{Real,Complex}, partial::Partials) where {T}
+#     reval, imval = reim(val)
+#     if deriv isa Real
+#         p = deriv * partial
+#         return Complex(Dual{T}(reval, p), Dual{T}(imval, zero(p)))
+#     else
+#         rederiv, imderiv = reim(deriv)
+#         return Complex(Dual{T}(reval, rederiv * partial), Dual{T}(imval, imderiv * partial))
+#     end
+# end
+# function dual_definition_retval(::Val{T}, val::Complex, deriv1::Union{Real,Complex}, partial1::Partials, deriv2::Union{Real,Complex}, partial2::Partials) where {T}
+#     reval, imval = reim(val)
+#     if deriv1 isa Real && deriv2 isa Real
+#         p = _mul_partials(partial1, partial2, deriv1, deriv2)
+#         return Complex(Dual{T}(reval, p), Dual{T}(imval, zero(p)))
+#     else
+#         rederiv1, imderiv1 = reim(deriv1)
+#         rederiv2, imderiv2 = reim(deriv2)
+#         return Complex(
+#             Dual{T}(reval, _mul_partials(partial1, partial2, rederiv1, rederiv2)),
+#             Dual{T}(imval, _mul_partials(partial1, partial2, imderiv1, imderiv2)),
+#         )
+#     end
+# end
 
 function unary_dual_definition(M, f)
     FD = ForwardDiff
@@ -235,7 +235,7 @@ function unary_dual_definition(M, f)
         deriv = $(DiffRules.diffrule(M, f, :x))
     end)
     return quote
-        @inline function $M.$f(d::$FD.Dual{T}) where T
+        @inline function $M.$f(d::$FD.Dual{T}) where {T}
             x = $FD.value(d)
             $work
             return $FD.dual_definition_retval(Val{T}(), val, deriv, $FD.partials(d))
@@ -400,21 +400,21 @@ end
 ########################
 
 function Base.promote_rule(::Type{Dual{T1,V1,N1}},
-                                      ::Type{Dual{T2,V2,N2}}) where {T1,V1,N1,T2,V2,N2}
+    ::Type{Dual{T2,V2,N2}}) where {T1,V1,N1,T2,V2,N2}
     # V1 and V2 might themselves be Dual types
     if T2 ≺ T1
-        Dual{T1,promote_type(V1,Dual{T2,V2,N2}),N1}
+        Dual{T1,promote_type(V1, Dual{T2,V2,N2}),N1}
     else
-        Dual{T2,promote_type(V2,Dual{T1,V1,N1}),N2}
+        Dual{T2,promote_type(V2, Dual{T1,V1,N1}),N2}
     end
 end
 
 function Base.promote_rule(::Type{Dual{T,A,N}},
-                           ::Type{Dual{T,B,N}}) where {T,A,B,N}
+    ::Type{Dual{T,B,N}}) where {T,A,B,N}
     return Dual{T,promote_type(A, B),N}
 end
 
-for R in (Irrational, Real, BigFloat, Bool)
+for R in (Irrational, Number, BigFloat, Bool)
     if isconcretetype(R) # issue #322
         @eval begin
             Base.promote_rule(::Type{$R}, ::Type{Dual{T,V,N}}) where {T,V,N} = Dual{T,promote_type($R, V),N}
@@ -440,7 +440,7 @@ Base.float(d::Dual) = convert(float(typeof(d)), d)
 # General Mathematical Operations #
 ###################################
 
-for (M, f, arity) in DiffRules.diffrules(filter_modules = nothing)
+for (M, f, arity) in DiffRules.diffrules(filter_modules=nothing)
     if (M, f) in ((:Base, :^), (:NaNMath, :pow), (:Base, :/), (:Base, :+), (:Base, :-), (:Base, :sin), (:Base, :cos))
         continue  # Skip methods which we define elsewhere.
     elseif !(isdefined(@__MODULE__, M) && isdefined(getfield(@__MODULE__, M), f))
@@ -488,7 +488,7 @@ end
 # * #
 #---#
 
-@inline Base.:*(d::Dual, x::Bool) = x ? d : (signbit(value(d))==0 ? zero(d) : -zero(d))
+@inline Base.:*(d::Dual, x::Bool) = x ? d : (signbit(value(d)) == 0 ? zero(d) : -zero(d))
 @inline Base.:*(x::Bool, d::Dual) = d * x
 
 # / #
@@ -544,7 +544,7 @@ for f in (:(Base.:^), :(NaNMath.pow))
             begin
                 v = value(y)
                 expv = ($f)(x, v)
-                deriv = (iszero(x) && v > 0) ? zero(expv) : expv*log(x)
+                deriv = (iszero(x) && v > 0) ? zero(expv) : expv * log(x)
                 return Dual{Ty}(expv, deriv * partials(y))
             end
         )
@@ -566,7 +566,7 @@ end
 # hypot #
 #-------#
 
-@inline function calc_hypot(x, y, z, ::Type{T}) where T
+@inline function calc_hypot(x, y, z, ::Type{T}) where {T}
     vx = value(x)
     vy = value(y)
     vz = value(z)
@@ -590,8 +590,8 @@ end
 #-----#
 
 @generated function calc_fma_xyz(x::Dual{T,<:Any,N},
-                                 y::Dual{T,<:Any,N},
-                                 z::Dual{T,<:Any,N}) where {T,N}
+    y::Dual{T,<:Any,N},
+    z::Dual{T,<:Any,N}) where {T,N}
     ex = Expr(:tuple, [:(fma(value(x), partials(y)[$i], fma(value(y), partials(x)[$i], partials(z)[$i]))) for i in 1:N]...)
     return quote
         $(Expr(:meta, :inline))
@@ -600,16 +600,16 @@ end
     end
 end
 
-@inline function calc_fma_xy(x::Dual{T}, y::Dual{T}, z::Real) where T
+@inline function calc_fma_xy(x::Dual{T}, y::Dual{T}, z::Real) where {T}
     vx, vy = value(x), value(y)
     result = fma(vx, vy, z)
     return Dual{T}(result, _mul_partials(partials(x), partials(y), vy, vx))
 end
 
 @generated function calc_fma_xz(x::Dual{T,<:Any,N},
-                                y::Real,
-                                z::Dual{T,<:Any,N}) where {T,N}
-    ex = Expr(:tuple, [:(fma(partials(x)[$i], y,  partials(z)[$i])) for i in 1:N]...)
+    y::Real,
+    z::Dual{T,<:Any,N}) where {T,N}
+    ex = Expr(:tuple, [:(fma(partials(x)[$i], y, partials(z)[$i])) for i in 1:N]...)
     return quote
         $(Expr(:meta, :inline))
         v = fma(value(x), y, value(z))
@@ -632,8 +632,8 @@ end
 #--------#
 
 @generated function calc_muladd_xyz(x::Dual{T,<:Any,N},
-                                    y::Dual{T,<:Any,N},
-                                    z::Dual{T,<:Any,N}) where {T,N}
+    y::Dual{T,<:Any,N},
+    z::Dual{T,<:Any,N}) where {T,N}
     ex = Expr(:tuple, [:(muladd(value(x), partials(y)[$i], muladd(value(y), partials(x)[$i], partials(z)[$i]))) for i in 1:N]...)
     return quote
         $(Expr(:meta, :inline))
@@ -642,16 +642,16 @@ end
     end
 end
 
-@inline function calc_muladd_xy(x::Dual{T}, y::Dual{T}, z::Real) where T
+@inline function calc_muladd_xy(x::Dual{T}, y::Dual{T}, z::Number) where {T}
     vx, vy = value(x), value(y)
     result = muladd(vx, vy, z)
     return Dual{T}(result, _mul_partials(partials(x), partials(y), vy, vx))
 end
 
 @generated function calc_muladd_xz(x::Dual{T,<:Any,N},
-                                   y::Real,
-                                   z::Dual{T,<:Any,N}) where {T,N}
-    ex = Expr(:tuple, [:(muladd(partials(x)[$i], y,  partials(z)[$i])) for i in 1:N]...)
+    y::Number,
+    z::Dual{T,<:Any,N}) where {T,N}
+    ex = Expr(:tuple, [:(muladd(partials(x)[$i], y, partials(z)[$i])) for i in 1:N]...)
     return quote
         $(Expr(:meta, :inline))
         v = muladd(value(x), y, value(z))
@@ -672,17 +672,17 @@ end
 
 # sin/cos #
 #--------#
-function Base.sin(d::Dual{T}) where T
+function Base.sin(d::Dual{T}) where {T}
     s, c = sincos(value(d))
     return Dual{T}(s, c * partials(d))
 end
 
-function Base.cos(d::Dual{T}) where T
+function Base.cos(d::Dual{T}) where {T}
     s, c = sincos(value(d))
     return Dual{T}(c, -s * partials(d))
 end
 
-@inline function Base.sincos(d::Dual{T}) where T
+@inline function Base.sincos(d::Dual{T}) where {T}
     sd, cd = sincos(value(d))
     return (Dual{T}(sd, cd * partials(d)), Dual{T}(cd, -sd * partials(d)))
 end
@@ -691,7 +691,7 @@ end
 #----------#
 
 if VERSION >= v"1.6.0-DEV.292"
-    @inline function Base.sincospi(d::Dual{T}) where T
+    @inline function Base.sincospi(d::Dual{T}) where {T}
         sd, cd = sincospi(value(d))
         return (Dual{T}(sd, cd * π * partials(d)), Dual{T}(cd, -sd * π * partials(d)))
     end
@@ -701,28 +701,28 @@ end
 #-------------------#
 
 function LinearAlgebra.eigvals(A::Symmetric{<:Dual{Tg,T,N}}) where {Tg,T<:Real,N}
-    λ,Q = eigen(Symmetric(value.(parent(A))))
+    λ, Q = eigen(Symmetric(value.(parent(A))))
     parts = ntuple(j -> diag(Q' * getindex.(partials.(A), j) * Q), N)
     Dual{Tg}.(λ, tuple.(parts...))
 end
 
 function LinearAlgebra.eigvals(A::Hermitian{<:Complex{<:Dual{Tg,T,N}}}) where {Tg,T<:Real,N}
-    λ,Q = eigen(Hermitian(value.(real.(parent(A))) .+ im .* value.(imag.(parent(A)))))
+    λ, Q = eigen(Hermitian(value.(real.(parent(A))) .+ im .* value.(imag.(parent(A)))))
     parts = ntuple(j -> diag(real.(Q' * (getindex.(partials.(real.(A)) .+ im .* partials.(imag.(A)), j)) * Q)), N)
     Dual{Tg}.(λ, tuple.(parts...))
 end
 
 function LinearAlgebra.eigvals(A::SymTridiagonal{<:Dual{Tg,T,N}}) where {Tg,T<:Real,N}
-    λ,Q = eigen(SymTridiagonal(value.(parent(A).dv),value.(parent(A).ev)))
+    λ, Q = eigen(SymTridiagonal(value.(parent(A).dv), value.(parent(A).ev)))
     parts = ntuple(j -> diag(Q' * getindex.(partials.(A), j) * Q), N)
     Dual{Tg}.(λ, tuple.(parts...))
 end
 
 # A ./ (λ - λ') but with diag special cased
 function _lyap_div!(A, λ)
-    for (j,μ) in enumerate(λ), (k,λ) in enumerate(λ)
+    for (j, μ) in enumerate(λ), (k, λ) in enumerate(λ)
         if k ≠ j
-            A[k,j] /= μ - λ
+            A[k, j] /= μ - λ
         end
     end
     A
@@ -730,16 +730,16 @@ end
 
 function LinearAlgebra.eigen(A::Symmetric{<:Dual{Tg,T,N}}) where {Tg,T<:Real,N}
     λ = eigvals(A)
-    _,Q = eigen(SymTridiagonal(value.(parent(A).dv),value.(parent(A).ev)))
-    parts = ntuple(j -> Q*_lyap_div!(Q' * getindex.(partials.(A), j) * Q - Diagonal(getindex.(partials.(λ), j)), value.(λ)), N)
-    Eigen(λ,Dual{Tg}.(Q, tuple.(parts...)))
+    _, Q = eigen(SymTridiagonal(value.(parent(A).dv), value.(parent(A).ev)))
+    parts = ntuple(j -> Q * _lyap_div!(Q' * getindex.(partials.(A), j) * Q - Diagonal(getindex.(partials.(λ), j)), value.(λ)), N)
+    Eigen(λ, Dual{Tg}.(Q, tuple.(parts...)))
 end
 
 function LinearAlgebra.eigen(A::SymTridiagonal{<:Dual{Tg,T,N}}) where {Tg,T<:Real,N}
     λ = eigvals(A)
-    _,Q = eigen(SymTridiagonal(value.(parent(A))))
-    parts = ntuple(j -> Q*_lyap_div!(Q' * getindex.(partials.(A), j) * Q - Diagonal(getindex.(partials.(λ), j)), value.(λ)), N)
-    Eigen(λ,Dual{Tg}.(Q, tuple.(parts...)))
+    _, Q = eigen(SymTridiagonal(value.(parent(A))))
+    parts = ntuple(j -> Q * _lyap_div!(Q' * getindex.(partials.(A), j) * Q - Diagonal(getindex.(partials.(λ), j)), value.(λ)), N)
+    Eigen(λ, Dual{Tg}.(Q, tuple.(parts...)))
 end
 
 
