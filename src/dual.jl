@@ -436,6 +436,9 @@ Base.convert(::Type{D}, d::D) where {D<:Dual} = d
 Base.float(::Type{Dual{T,V,N}}) where {T,V,N} = Dual{T,float(V),N}
 Base.float(d::Dual) = convert(float(typeof(d)), d)
 
+Base.real(::Type{Dual{T,V,N}}) where {T,V,N} = Dual{T,real(V),N}
+Base.real(d::Dual) = convert(real(typeof(d)), d)
+
 ###################################
 # General Mathematical Operations #
 ###################################
