@@ -8,7 +8,7 @@
 Determines whether the type V is allowed as the scalar type in a
 Dual. By default, only `<:Real` types are allowed.
 """
-can_dual(::Type{<:Real}) = true
+can_dual(::Type{<:Number}) = true
 can_dual(::Type) = false
 
 struct Dual{T,V,N} <: Real
