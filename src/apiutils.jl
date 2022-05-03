@@ -82,3 +82,13 @@ function seed!(duals::AbstractArray{Dual{T,V,N}}, x, index,
     duals[dual_inds] .= Dual{T,V,N}.(view(x, dual_inds), getindex.(Ref(seeds), seed_inds))
     return duals
 end
+
+####################
+# preparing inputs #
+####################
+
+pluseps(::Type{T}, x) where {T} = Dual{T}(x, one(x))
+pluseps(::Type{T}, x::Complex) where {T} = Complex(
+    Dual{T}(real(x), one(real(x))),
+    Dual{T}(imag(x), zero(imag(x)))
+)
