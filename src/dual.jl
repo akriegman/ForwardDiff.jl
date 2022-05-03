@@ -672,9 +672,12 @@ end
 
 # sin/cos #
 #--------#
+
+for D in DUAL_TYPES
 function Base.sin(d::Dual{T}) where T
     s, c = sincos(value(d))
     return Dual{T}(s, c * partials(d))
+end
 end
 
 function Base.cos(d::Dual{T}) where T

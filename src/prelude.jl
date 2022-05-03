@@ -10,6 +10,8 @@ const UNARY_PREDICATES = Symbol[:isinf, :isnan, :isfinite, :iseven, :isodd, :isr
 
 const BINARY_PREDICATES = Symbol[:isequal, :isless, :<, :>, :(==), :(!=), :(<=), :(>=)]
 
+const DUAL_TYPES = (T -> Dual{T}, T -> Complex{Dual{T}})
+
 const DEFAULT_CHUNK_THRESHOLD = 12
 
 struct Chunk{N} end
